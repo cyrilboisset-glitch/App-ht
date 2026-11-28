@@ -1133,7 +1133,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // restauration d'une sauvegarde (v3bkpend) : appliquée avant toute lecture du stockage, pour que la page précédente ne puisse pas l'écraser
 (function(){try{const j=localStorage.getItem('v3bkpend');if(!j)return;localStorage.removeItem('v3bkpend');const p=JSON.parse(j);for(const k of p.rm||[])localStorage.removeItem(k);for(const k in p.set)localStorage.setItem(k,p.set[k])}catch(e){try{localStorage.removeItem('v3bkpend')}catch(x){}}})();
 // ---- version et relevé d'erreurs (21 nov. 2026) : la version s'affiche sous le titre de l'accueil ; toute erreur est gardée et montrée par un badge ⚠️ ----
-const VCT_VER='28/11/2026 · ba';const ERRL=[];
+const VCT_VER='28/11/2026 · bb';const ERRL=[];
 // vérifie au lancement (version.txt, jamais en cache) si une version plus récente est publiée : bandeau « toucher pour recharger »
 setTimeout(()=>{try{if(!/^https?:/.test(location.protocol))return;fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{t=(t||'').trim();if(t&&t!==VCT_VER&&t.length<40&&!document.getElementById('vupd')){const d=document.createElement('div');d.id='vupd';d.textContent='🔄 Nouvelle version ('+t+') : toucher pour recharger';d.style.cssText='position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:99999;background:#f0cf73;color:#1c1a17;font:700 15px Arial;padding:12px 18px;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.5)';d.onclick=()=>{location.replace(location.pathname+'?v='+Date.now())};document.body.appendChild(d)}}).catch(()=>{})}catch(e){}},6000);
 function errNote(m){try{m=String(m||'').slice(0,300);if(!m||ERRL.length&&ERRL[ERRL.length-1].m===m)return;ERRL.push({t:new Date().toLocaleTimeString('fr-FR'),m});if(ERRL.length>12)ERRL.shift();
@@ -6104,7 +6104,7 @@ function cdgStart(remote){if(CDG.on)return;Object.assign(CDG,{on:true,S:[],P:[],
 function cdgStop(remote){if(!CDG.on)return;CDG.on=false;clearInterval(CDG.tm);if(CDG.po){try{CDG.po.disconnect()}catch(e){}CDG.po=null}if(CDG.ov){CDG.ov.remove();CDG.ov=null}if(!remote)castSend({t:'dgoff'});CDG.rep=cdgReport()}
 const cdgAv=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0,cdgQ=(a,p)=>{if(!a.length)return 0;const b=[...a].sort((x,y)=>x-y);return b[Math.min(b.length-1,Math.floor(p*b.length))]};
 async function cdgTick(){if(!CDG.on)return;const pc=CAST.pc;if(!pc)return;const now=performance.now(),dt=Math.max(.3,(now-CDG.tl)/1000);CDG.tl=now;
- const s={t:Math.round((now-CDG.t0)/1000)},P=CDG.prev,dl=(k,v)=>{v=v||0;const d=v-(P[k]||0);P[k]=v;return d};
+ const s={t:Math.round((now-CDG.t0)/1000)},P=CDG.prev,dl=(k,v)=>{v=v||0;let d=v-(P[k]||0);P[k]=v;if(d<0){d=0;s.rst=1}return d};
  let rep;try{rep=await pc.getStats()}catch(e){return}
  let pair=null;const cand={},cdc={};rep.forEach(x=>{if(x.type==='local-candidate'||x.type==='remote-candidate')cand[x.id]=x;else if(x.type==='codec')cdc[x.id]=x.mimeType});
  rep.forEach(x=>{if(x.type==='candidate-pair'&&x.nominated&&x.state==='succeeded'&&(!pair||(x.bytesSent||0)+(x.bytesReceived||0)>(pair.bytesSent||0)+(pair.bytesReceived||0)))pair=x});
@@ -6130,6 +6130,8 @@ function cdgReport(){const S=CDG.S,P=CDG.P,H=CAST.host?S:P,V=CAST.view?S:P,n=Mat
  const r3=col(H,'r3'),enc=col(H,'enc'),fe=col(H,'fe'),kbH=col(H,'kb'),rsl=sum(col(H,'rsl')),rmx=col(H,'rmx'),ltm=col(H,'ltm'),ltx=col(H,'ltx'),mk=col(H,'mk'),cv=col(H,'cv'),bf=col(H,'bf'),lc=sum(col(H,'lc')),lb=sum(col(H,'lb')),w=H.length&&H[H.length-1].w?H[H.length-1].w+'×'+H[H.length-1].h:'?',impl=(H.find(x=>x.impl)||{}).impl||'?';
  L.push('');L.push('📱 TÉLÉPHONE (hôte)');
  L.push(' 3D dessinée par seconde : '+st(r3));L.push(' images 3D à plus de 50 ms d\'intervalle : '+rsl+' · pire intervalle : '+(rmx.length?Math.max(...rmx):0)+' ms');
+ const rzs=[];H.forEach(x=>{if(x.w){const k=x.w+'×'+x.h;if(!rzs.length||rzs[rzs.length-1]!==k)rzs.push(k)}});const rzN=Math.max(0,rzs.length-1),rstN=S.concat(P).filter(x=>x.rst).length;
+ L.push(' résolution envoyée : '+(rzs.length?rzs[0]+(rzN?' → … → '+rzs[rzs.length-1]+' ('+rzN+' changement'+(rzN>1?'s':'')+')':''):'?')+(rstN?' · '+rstN+' réinitialisation(s) de la vidéo détectée(s) (compteurs remis à zéro)':''));
  L.push(' images livrées par la capture du canvas (avant l\'encodeur) : '+st(col(H,'cs')));L.push(' images encodées par seconde : '+st(fe));L.push(' temps d\'encodage par image : '+st(enc,' ms')+' · encodeur : '+impl);L.push(' débit envoyé : '+st(kbH,' kb/s')+' · image envoyée : '+w);
  L.push(' limitation WebRTC : '+f1(lc)+' s par le processeur · '+f1(lb)+' s par le réseau');
  L.push(' tâches JavaScript longues (> 50 ms) : '+f1(cdgAv(col(H,'ltn')))+'/s · '+f1(cdgAv(ltm))+' ms de blocage par seconde · la pire : '+(ltx.length?Math.max(...ltx):0)+' ms');
@@ -6144,6 +6146,7 @@ function cdgReport(){const S=CDG.S,P=CDG.P,H=CAST.host?S:P,V=CAST.view?S:P,n=Mat
  // verdict
  const hAt={};H.forEach(x=>{hAt[x.t]=x});let fzPh=0;V.forEach(x=>{if(!x.fz)return;const h=hAt[x.t]||hAt[x.t-1]||hAt[x.t+1];if(h&&((h.r3!=null&&h.r3<20)||h.rmx>300||h.ltx>300))fzPh+=x.fz});const fzNet=Math.max(0,fz-fzPh),csA=cdgAv(col(H,'cs')),feA=cdgAv(fe),capLow=r3.length&&col(H,'cs').length&&cdgAv(r3)>=40&&csA<26,encLow=col(H,'cs').length&&csA>=26&&feA<csA*.8,lowFps=r3.length&&cdgAv(r3)<24,slowEnc=enc.length&&cdgAv(enc)>20,cpuLim=lc>n*.1,bwLim=lb>n*.1,rttHi=rtt.length&&cdgQ(rtt,.95)>100,lossHi=(loV+rcv)>0&&loV/(loV+rcv)>.01,nkHi=(nkV+col(H,'nk').reduce((x,y)=>x+y,0))>n*5,jbHi=jb.length&&cdgAv(jb)>80,decHi=dec.length&&cdgAv(dec)>15,dispBad=n>0&&(p50+p100)/Math.max(1,sum(col(V,'pr')))>.05,jsBusy=ltm.length&&cdgAv(ltm)>150,mirHi=(mk.length&&cdgAv(mk)>500)||(bf.length&&Math.max(...bf)>1000),dcHi=dc.length&&cdgQ(dc,.95)>150,dispLow=pr.length&&fd.length&&cdgAv(pr)<cdgAv(fd)*.8;
  if(lowFps)F.push('🔴 Le téléphone dessine la 3D à '+f1(cdgAv(r3))+'/s seulement : c\'est lui le goulot (la vidéo ne peut pas être plus fluide que la 3D). Essaie la netteté « Normale », une qualité graphique plus basse, ou coupe des éléments affichés.');
+ if(rzN>=3||rstN>=3)F.push('🔴 La résolution de l\'image change '+rzN+' fois et la vidéo se réinitialise '+rstN+' fois : chaque changement redémarre l\'encodeur (gel, tampon qui monte, débit qui s\'effondre puis explose). C\'est la résolution adaptative du téléphone qui monte et descend en boucle ; choisis une netteté plus basse (Normale ou Haute).');
  if(capLow)F.push('🟠 La capture du canvas ne livre que '+f1(csA)+' images/s alors que la 3D en dessine '+f1(cdgAv(r3))+' : c\'est la capture vidéo du navigateur du téléphone qui limite, avant l\'encodeur.');
  if(encLow)F.push('🟠 La capture livre '+f1(csA)+' images/s mais l\'encodeur n\'en garde que '+f1(feA)+' : WebRTC en supprime (processeur, débit estimé ou réglage de priorité).');
  if(slowEnc||cpuLim)F.push('🟠 Le téléphone a du mal à encoder la vidéo ('+f1(cdgAv(enc))+' ms par image, '+f1(lc)+' s limitées par le processeur) : baisse la netteté du cast (moins de pixels à encoder).');
@@ -14691,7 +14694,8 @@ function dprTick(now){
   // chaque changement réalloue l'image (petit blocage) : on baisse après 5 s de lenteur, on remonte après 15 s de fluidité, jamais deux fois en moins de 10 s
   DPRS.lo=fps<(QP.fpsLo||40)?DPRS.lo+1:0;DPRS.hi=fps>(QP.fpsHi||57)?DPRS.hi+1:0;
   aqTick(now,fps,mn);
-  if(now-DPRS.t>10000){if(DPRS.lo>=2&&PR>mn){PR=Math.max(mn,PR-.1);ren.setPixelRatio(PR);rs();DPRS.t=now;DPRS.lo=0}else if(DPRS.hi>=6&&PR<PRMAX()-.04){PR=Math.min(PRMAX(),PR+.05);ren.setPixelRatio(PR);rs();DPRS.t=now;DPRS.hi=0}}}
+  const CSTF=typeof CAST!=='undefined'&&CAST.fwd;/* pendant le cast : pas de remontée automatique et pas plus grands, car chaque changement de taille redémarre l'encodeur vidéo (gel, saut de débit) */
+  if(now-DPRS.t>10000){if(DPRS.lo>=2&&PR>mn){PR=Math.max(mn,PR-(CSTF?.25:.1));ren.setPixelRatio(PR);rs();DPRS.t=now;DPRS.lo=0}else if(!CSTF&&DPRS.hi>=6&&PR<PRMAX()-.04){PR=Math.min(PRMAX(),PR+.05);ren.setPixelRatio(PR);rs();DPRS.t=now;DPRS.hi=0}}}
 }
 
 // ---- qualité automatique (15 nov. 2026, demande de Cyril : détecter les images/s et adapter le graphisme, au moins 20 img/s) ----
